@@ -161,6 +161,8 @@ DECLARE_SOA_COLUMN(OniaEta, oniaEta, float);
 DECLARE_SOA_COLUMN(OniaPhi, oniaPhi, float);
 DECLARE_SOA_COLUMN(OniaVz, oniaVz, float);
 DECLARE_SOA_COLUMN(OniaVtxZ, oniaVtxZ, float);
+DECLARE_SOA_COLUMN(MotherPDG, motherPDG, int64_t);
+DECLARE_SOA_COLUMN(GrandmotherPDG, grandmotherPDG, int64_t);
 } // namespace dqanalysisflags
 
 DECLARE_SOA_TABLE(EventCuts, "AOD", "DQANAEVCUTS", dqanalysisflags::IsEventSelected);                                                            //!  joinable to ReducedEvents
@@ -193,6 +195,11 @@ DECLARE_SOA_TABLE(JPsiMuonCandidates, "AOD", "DQJPSIMUONA",
                   dqanalysisflags::McFlag);
 DECLARE_SOA_TABLE(JPsieeCandidates, "AOD", "DQPSEUDOPROPER", dqanalysisflags::Massee, dqanalysisflags::Ptee, dqanalysisflags::Etaee, dqanalysisflags::Rapee, dqanalysisflags::Phiee, dqanalysisflags::Lxyee, dqanalysisflags::LxyeePoleMass, dqanalysisflags::Lzee, dqanalysisflags::AmbiguousInBunchPairs, dqanalysisflags::AmbiguousOutOfBunchPairs, dqanalysisflags::Corrassoc, dqanalysisflags::MultiplicityFT0A, dqanalysisflags::MultiplicityFT0C, dqanalysisflags::PercentileFT0M, dqanalysisflags::MultiplicityNContrib);
 DECLARE_SOA_TABLE(OniaMCTruth, "AOD", "MCTRUTHONIA", dqanalysisflags::OniaPt, dqanalysisflags::OniaEta, dqanalysisflags::OniaY, dqanalysisflags::OniaPhi, dqanalysisflags::OniaVz, dqanalysisflags::OniaVtxZ, dqanalysisflags::MultiplicityFT0A, dqanalysisflags::MultiplicityFT0C, dqanalysisflags::PercentileFT0M, dqanalysisflags::MultiplicityNContrib);
+DECLARE_SOA_TABLE(MuonTable, "AOD", "DQMUONTABLE",
+                  dqanalysisflags::RunNumber, dqanalysisflags::EventIdx, dqanalysisflags::EventTimestamp, dqanalysisflags::GlobalIndexassoc, 
+                  dqanalysisflags::Ptassoc, dqanalysisflags::Etaassoc, dqanalysisflags::Phiassoc,
+                  dqanalysisflags::MotherPDG, dqanalysisflags::GrandmotherPDG
+                  );
 } // namespace o2::aod
 
 // Declarations of various short names
@@ -807,6 +814,7 @@ struct AnalysisTrackSelection {
 struct AnalysisMuonSelection {
   Produces<aod::MuonTrackCuts> muonSel;
   Produces<aod::MuonAmbiguities> muonAmbiguities;
+  Produces<aod::MuonTable> muonTable;
   OutputObj<THashList> fOutputList{"output"};
 
   Configurable<std::string> fConfigCuts{"cfgMuonCuts", "muonQualityCuts", "Comma separated list of muon cuts"};
@@ -1023,6 +1031,32 @@ struct AnalysisMuonSelection {
           }
         } // end loop over cuts
       } // end loop over MC signals
+
+      // Find grandmothers
+      int motherPdg = -9999;
+      int grandmotherPdg = -9999;
+      
+      if (track.has_reducedMCTrack()) {
+        auto mctrack = track.reducedMCTrack();
+        if (mctrack.has_mothers()) {
+          
+          motherPdg = mctrack.template mothers_first_as<ReducedMCTracks>().pdgCode();
+          auto currentMCParticle = mctrack;
+          int ith = 0;
+          
+          while (currentMCParticle.has_mothers()) {
+            auto mother = currentMCParticle.template mothers_first_as<ReducedMCTracks>();
+            currentMCParticle = mother;
+            grandmotherPdg = currentMCParticle.pdgCode();
+            ith++;
+          }
+        }
+      }
+
+      // Fill muon table
+      muonTable(event.runNumber(), event.globalIndex(), event.timestamp(),
+      track.globalIndex(), track.pt(), track.eta(), track.phi(),
+      motherPdg, grandmotherPdg);
 
       // count the number of associations per track
       if (fConfigPublishAmbiguity && filterMap > 0) {
