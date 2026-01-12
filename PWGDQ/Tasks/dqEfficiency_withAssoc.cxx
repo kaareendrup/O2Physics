@@ -161,6 +161,8 @@ DECLARE_SOA_COLUMN(OniaEta, oniaEta, float);
 DECLARE_SOA_COLUMN(OniaPhi, oniaPhi, float);
 DECLARE_SOA_COLUMN(OniaVz, oniaVz, float);
 DECLARE_SOA_COLUMN(OniaVtxZ, oniaVtxZ, float);
+DECLARE_SOA_COLUMN(MotherID, motherID, int64_t);
+DECLARE_SOA_COLUMN(GrandmotherID, grandmotherID, int64_t);
 DECLARE_SOA_COLUMN(MotherPDG, motherPDG, int64_t);
 DECLARE_SOA_COLUMN(GrandmotherPDG, grandmotherPDG, int64_t);
 } // namespace dqanalysisflags
@@ -198,7 +200,7 @@ DECLARE_SOA_TABLE(OniaMCTruth, "AOD", "MCTRUTHONIA", dqanalysisflags::OniaPt, dq
 DECLARE_SOA_TABLE(MuonTable, "AOD", "DQMUONTABLE",
                   dqanalysisflags::RunNumber, dqanalysisflags::EventIdx, dqanalysisflags::EventTimestamp, dqanalysisflags::GlobalIndexassoc, 
                   dqanalysisflags::Ptassoc, dqanalysisflags::Etaassoc, dqanalysisflags::Phiassoc,
-                  dqanalysisflags::MotherPDG, dqanalysisflags::GrandmotherPDG
+                  dqanalysisflags::MotherID, dqanalysisflags::GrandmotherID, dqanalysisflags::MotherPDG, dqanalysisflags::GrandmotherPDG
                   );
 } // namespace o2::aod
 
@@ -1033,22 +1035,28 @@ struct AnalysisMuonSelection {
       } // end loop over MC signals
 
       // Find grandmothers
+      int motherID = -9999;
+      int grandmotherID = -9999;
       int motherPdg = -9999;
       int grandmotherPdg = -9999;
+      int nmothers = 0;
       
       if (track.has_reducedMCTrack()) {
         auto mctrack = track.reducedMCTrack();
         if (mctrack.has_mothers()) {
           
+          motherID = mctrack.template mothers_first_as<ReducedMCTracks>().globalIndex();
           motherPdg = mctrack.template mothers_first_as<ReducedMCTracks>().pdgCode();
           auto currentMCParticle = mctrack;
-          int ith = 0;
+          // int ith = 0;
           
           while (currentMCParticle.has_mothers()) {
             auto mother = currentMCParticle.template mothers_first_as<ReducedMCTracks>();
             currentMCParticle = mother;
+            grandmotherID = currentMCParticle.globalIndex();
             grandmotherPdg = currentMCParticle.pdgCode();
-            ith++;
+            // ith++;
+            nmothers++;
           }
         }
       }
@@ -1056,7 +1064,7 @@ struct AnalysisMuonSelection {
       // Fill muon table
       muonTable(event.runNumber(), event.globalIndex(), event.timestamp(),
       track.globalIndex(), track.pt(), track.eta(), track.phi(),
-      motherPdg, grandmotherPdg);
+      motherID, grandmotherID, motherPdg, grandmotherPdg);
 
       // count the number of associations per track
       if (fConfigPublishAmbiguity && filterMap > 0) {
