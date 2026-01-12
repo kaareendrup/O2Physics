@@ -165,6 +165,8 @@ DECLARE_SOA_COLUMN(MotherID, motherID, int64_t);
 DECLARE_SOA_COLUMN(GrandmotherID, grandmotherID, int64_t);
 DECLARE_SOA_COLUMN(MotherPDG, motherPDG, int64_t);
 DECLARE_SOA_COLUMN(GrandmotherPDG, grandmotherPDG, int64_t);
+DECLARE_SOA_COLUMN(IsPrimaryMuon, isPrimaryMuon, bool);
+DECLARE_SOA_COLUMN(IsSecondaryMuon, isSecondaryMuon, bool);
 } // namespace dqanalysisflags
 
 DECLARE_SOA_TABLE(EventCuts, "AOD", "DQANAEVCUTS", dqanalysisflags::IsEventSelected);                                                            //!  joinable to ReducedEvents
@@ -200,7 +202,8 @@ DECLARE_SOA_TABLE(OniaMCTruth, "AOD", "MCTRUTHONIA", dqanalysisflags::OniaPt, dq
 DECLARE_SOA_TABLE(MuonTable, "AOD", "DQMUONTABLE",
                   dqanalysisflags::RunNumber, dqanalysisflags::EventIdx, dqanalysisflags::EventTimestamp, dqanalysisflags::GlobalIndexassoc, 
                   dqanalysisflags::Ptassoc, dqanalysisflags::Etaassoc, dqanalysisflags::Phiassoc,
-                  dqanalysisflags::MotherID, dqanalysisflags::GrandmotherID, dqanalysisflags::MotherPDG, dqanalysisflags::GrandmotherPDG
+                  dqanalysisflags::MotherID, dqanalysisflags::GrandmotherID, dqanalysisflags::MotherPDG, dqanalysisflags::GrandmotherPDG,
+                  dqanalysisflags::IsPrimaryMuon, dqanalysisflags::IsSecondaryMuon
                   );
 } // namespace o2::aod
 
@@ -1040,9 +1043,16 @@ struct AnalysisMuonSelection {
       int motherPdg = -9999;
       int grandmotherPdg = -9999;
       int nmothers = 0;
+      bool isPrimary = false;
+      bool isSecondary = false;
       
       if (track.has_reducedMCTrack()) {
         auto mctrack = track.reducedMCTrack();
+
+        // Check if primary or secondary
+        isPrimary = mctrack.isPhysicalPrimary();
+        isSecondary = !mctrack.producedByGenerator();
+
         if (mctrack.has_mothers()) {
           
           motherID = mctrack.template mothers_first_as<ReducedMCTracks>().globalIndex();
@@ -1050,6 +1060,7 @@ struct AnalysisMuonSelection {
           auto currentMCParticle = mctrack;
           // int ith = 0;
           
+          // Loop to find first mother
           while (currentMCParticle.has_mothers()) {
             auto mother = currentMCParticle.template mothers_first_as<ReducedMCTracks>();
             currentMCParticle = mother;
@@ -1064,7 +1075,8 @@ struct AnalysisMuonSelection {
       // Fill muon table
       muonTable(event.runNumber(), event.globalIndex(), event.timestamp(),
       track.globalIndex(), track.pt(), track.eta(), track.phi(),
-      motherID, grandmotherID, motherPdg, grandmotherPdg);
+      motherID, grandmotherID, motherPdg, grandmotherPdg,
+      isPrimary, isSecondary);
 
       // count the number of associations per track
       if (fConfigPublishAmbiguity && filterMap > 0) {
