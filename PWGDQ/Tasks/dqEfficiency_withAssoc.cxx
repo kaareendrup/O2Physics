@@ -166,8 +166,12 @@ DECLARE_SOA_COLUMN(GrandmotherID, grandmotherID, int64_t);
 DECLARE_SOA_COLUMN(MotherPDG, motherPDG, int64_t);
 DECLARE_SOA_COLUMN(GrandmotherPDG, grandmotherPDG, int64_t);
 DECLARE_SOA_COLUMN(NMothers, nMothers, int64_t);
-DECLARE_SOA_COLUMN(IsPrimaryMuon, isPrimaryMuon, bool);
-DECLARE_SOA_COLUMN(IsSecondaryMuon, isSecondaryMuon, bool);
+DECLARE_SOA_COLUMN(IsPrimary, isPrimary, bool);
+DECLARE_SOA_COLUMN(IsProducedInTransport, isProducedInTransport, bool);
+DECLARE_SOA_COLUMN(IsProducedByGenerator, isProducedByGenerator, bool);
+DECLARE_SOA_COLUMN(IsFromBackgroundEvent, isFromBackgroundEvent, bool);
+DECLARE_SOA_COLUMN(IsHEPMCFinalState, isHEPMCFinalState, bool);
+DECLARE_SOA_COLUMN(IsPowhegDY, isPowhegDY, bool);
 } // namespace dqanalysisflags
 
 DECLARE_SOA_TABLE(EventCuts, "AOD", "DQANAEVCUTS", dqanalysisflags::IsEventSelected);                                                            //!  joinable to ReducedEvents
@@ -204,7 +208,7 @@ DECLARE_SOA_TABLE(MuonTable, "AOD", "DQMUONTABLE",
                   dqanalysisflags::RunNumber, dqanalysisflags::EventIdx, dqanalysisflags::EventTimestamp, dqanalysisflags::GlobalIndexassoc, 
                   dqanalysisflags::Ptassoc, dqanalysisflags::Etaassoc, dqanalysisflags::Phiassoc,
                   dqanalysisflags::MotherID, dqanalysisflags::GrandmotherID, dqanalysisflags::MotherPDG, dqanalysisflags::GrandmotherPDG, dqanalysisflags::NMothers,
-                  dqanalysisflags::IsPrimaryMuon, dqanalysisflags::IsSecondaryMuon
+                  dqanalysisflags::IsPrimary, dqanalysisflags::IsProducedInTransport, dqanalysisflags::IsProducedByGenerator, dqanalysisflags::IsFromBackgroundEvent, dqanalysisflags::IsHEPMCFinalState, dqanalysisflags::IsPowhegDY
                   );
 } // namespace o2::aod
 
@@ -1045,14 +1049,22 @@ struct AnalysisMuonSelection {
       int grandmotherPdg = -9999;
       int nMothers = 0;
       bool isPrimary = false;
-      bool isSecondary = false;
+      bool isProducedInTransport = false;
+      bool isProducedByGenerator = false;
+      bool isFromBackgroundEvent = false;
+      bool isHEPMCFinalState = false;
+      bool isPowhegDY = false;
       
       if (track.has_reducedMCTrack()) {
         auto mctrack = track.reducedMCTrack();
 
         // Check if primary or secondary
         isPrimary = mctrack.isPhysicalPrimary();
-        isSecondary = !mctrack.producedByGenerator();
+        isProducedInTransport = !mctrack.producedByGenerator();
+        isProducedByGenerator = mctrack.producedByGenerator();
+        isFromBackgroundEvent = mctrack.fromBackgroundEvent();
+        isHEPMCFinalState = mctrack.getHepMCStatusCode() == 11;
+        isPowhegDY = mctrack.getHepMCStatusCode() == 23;
 
         if (mctrack.has_mothers()) {
           
@@ -1075,7 +1087,7 @@ struct AnalysisMuonSelection {
       muonTable(event.runNumber(), event.globalIndex(), event.timestamp(),
       track.globalIndex(), track.pt(), track.eta(), track.phi(),
       motherID, grandmotherID, motherPdg, grandmotherPdg, nMothers,
-      isPrimary, isSecondary);
+      isPrimary, isProducedInTransport, isProducedByGenerator, isFromBackgroundEvent, isHEPMCFinalState, isPowhegDY);
 
       // count the number of associations per track
       if (fConfigPublishAmbiguity && filterMap > 0) {
