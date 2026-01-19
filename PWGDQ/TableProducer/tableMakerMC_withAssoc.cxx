@@ -1072,6 +1072,34 @@ struct TableMakerMC {
             i++;
           } // end loop over MC signals
 
+          // Find grandmothers
+          int motherID = -9999;
+          int grandmotherID = -9999;
+          int motherPdg = -9999;
+          int grandmotherPdg = -9999;
+          int nMothers = 0;
+
+          if (mctrack.has_mothers()) {
+            
+            motherID = mctrack.template mothers_first_as<aod::McParticles>().globalIndex();
+            motherPdg = mctrack.template mothers_first_as<aod::McParticles>().pdgCode();
+            auto currentMCParticle = mctrack;
+            
+            // Loop to find first mother
+            while (currentMCParticle.has_mothers()) {
+              // auto mother = currentMCParticle.template mothers_first_as<ReducedMCTracks>();
+              auto mother = currentMCParticle.template mothers_first_as<aod::McParticles>();
+              currentMCParticle = mother;
+              grandmotherID = currentMCParticle.globalIndex();
+              grandmotherPdg = currentMCParticle.pdgCode();
+              nMothers++;
+            }
+          }
+          LOG(info) << "Muon MC truth: muonID=" << mctrack.globalIndex() << " pdg=" << mctrack.pdgCode()
+                    << " motherID=" << motherID << " motherPdg=" << motherPdg
+                    << " grandmotherID=" << grandmotherID << " grandmotherPdg=" << grandmotherPdg
+                    << " nMothers=" << nMothers;
+
           // if the MC truth particle corresponding to this reconstructed muon is not already written,
           //   add it to the skimmed stack
           if (!(fLabelsMap.find(mctrack.globalIndex()) != fLabelsMap.end())) {
