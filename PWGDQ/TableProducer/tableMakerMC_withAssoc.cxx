@@ -1110,7 +1110,6 @@ struct TableMakerMC {
             
             // Loop to find first mother
             while (currentMCParticle.has_mothers()) {
-              // auto mother = currentMCParticle.template mothers_first_as<ReducedMCTracks>();
               auto mother = currentMCParticle.template mothers_first_as<aod::McParticles>();
               currentMCParticle = mother;
               grandmotherID = currentMCParticle.globalIndex();
