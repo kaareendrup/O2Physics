@@ -1152,6 +1152,62 @@ struct AnalysisMuonSelection {
     }
   }
 
+  void runMuonMC(ReducedMCTracks const& muonsMC)
+  {
+    for (auto& mctrack : muonsMC) {
+
+      if (!std::abs(mctrack.pdgCode() ==13)) {
+        continue;
+      }
+
+      auto eventMC = mctrack.reducedMCevent();
+
+      // Find grandmothers
+      int motherID = -9999;
+      int grandmotherID = -9999;
+      int motherPdg = -9999;
+      int grandmotherPdg = -9999;
+      int nMothers = 0;
+      bool isPrimary = false;
+      bool isProducedInTransport = false;
+      bool isProducedByGenerator = false;
+      bool isFromBackgroundEvent = false;
+      bool isHEPMCFinalState = false;
+      bool isPowhegDY = false;
+      
+      // Check if primary or secondary
+      isPrimary = mctrack.isPhysicalPrimary();
+      isProducedInTransport = !mctrack.producedByGenerator();
+      isProducedByGenerator = mctrack.producedByGenerator();
+      isFromBackgroundEvent = mctrack.fromBackgroundEvent();
+      isHEPMCFinalState = mctrack.getHepMCStatusCode() == 11;
+      isPowhegDY = mctrack.getHepMCStatusCode() == 23;
+
+      if (mctrack.has_mothers()) {
+        
+        motherID = mctrack.template mothers_first_as<ReducedMCTracks>().globalIndex();
+        motherPdg = mctrack.template mothers_first_as<ReducedMCTracks>().pdgCode();
+        auto currentMCParticle = mctrack;
+        
+        // Loop to find first mother
+        while (currentMCParticle.has_mothers()) {
+          auto mother = currentMCParticle.template mothers_first_as<ReducedMCTracks>();
+          currentMCParticle = mother;
+          grandmotherID = currentMCParticle.globalIndex();
+          grandmotherPdg = currentMCParticle.pdgCode();
+          nMothers++;
+        }
+      }
+
+      // Fill muon table
+      muonTable(-9999, eventMC.globalIndex(), -9999,
+      mctrack.globalIndex(), mctrack.pt(), mctrack.eta(), mctrack.phi(),
+      motherID, grandmotherID, motherPdg, grandmotherPdg, nMothers,
+      isPrimary, isProducedInTransport, isProducedByGenerator, isFromBackgroundEvent, isHEPMCFinalState, isPowhegDY);
+
+    } // end loop over muons
+  }
+
   void processSkimmed(ReducedMuonsAssoc const& assocs, MyEventsSelected const& events, MyMuonTracks const& muons, ReducedMCEvents const& eventsMC, ReducedMCTracks const& tracksMC)
   {
     runMuonSelection<gkEventFillMap, gkMuonFillMap>(assocs, events, muons, eventsMC, tracksMC);
@@ -1160,7 +1216,10 @@ struct AnalysisMuonSelection {
   {
     runMuonSelection<gkEventFillMapWithCov, gkMuonFillMapWithCov>(assocs, events, muons, eventsMC, tracksMC);
   }
-
+  void processMC(ReducedMuonsAssoc const& /*assocs*/, MyEventsSelected const& /*events*/, MyMuonTracks const& /*muons*/, ReducedMCEvents const& /*eventsMC*/, ReducedMCTracks const& tracksMC)
+  {
+    runMuonMC(tracksMC);
+  }
   void processDummy(MyEvents&)
   {
     // do nothing
@@ -1168,6 +1227,7 @@ struct AnalysisMuonSelection {
 
   PROCESS_SWITCH(AnalysisMuonSelection, processSkimmed, "Run muon selection on DQ skimmed muons", false);
   PROCESS_SWITCH(AnalysisMuonSelection, processSkimmedWithCov, "Run muon selection on DQ skimmed muons, with event and track covariances", false);
+  PROCESS_SWITCH(AnalysisMuonSelection, processMC, "Run muon selection on DQ skimmed muons, MC tracks only", false);
   PROCESS_SWITCH(AnalysisMuonSelection, processDummy, "Dummy function", true);
 };
 
