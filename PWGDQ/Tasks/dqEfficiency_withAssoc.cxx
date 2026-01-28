@@ -96,6 +96,7 @@ DECLARE_SOA_COLUMN(TauzBcandidate, tauzBcandidate, float);
 DECLARE_SOA_COLUMN(CosPBcandidate, cosPBcandidate, float);
 DECLARE_SOA_COLUMN(Chi2Bcandidate, chi2Bcandidate, float);
 DECLARE_SOA_COLUMN(GlobalIndexassoc, globalIndexassoc, uint64_t);
+DECLARE_SOA_COLUMN(GlobalIndexMCtrack, globalIndexMCtrack, int64_t);
 DECLARE_SOA_COLUMN(GlobalIndexleg1, globalIndexleg1, uint64_t);
 DECLARE_SOA_COLUMN(GlobalIndexleg2, globalIndexleg2, uint64_t);
 DECLARE_SOA_COLUMN(Ptassoc, ptassoc, float);
@@ -205,7 +206,7 @@ DECLARE_SOA_TABLE(JPsiMuonCandidates, "AOD", "DQJPSIMUONA",
 DECLARE_SOA_TABLE(JPsieeCandidates, "AOD", "DQPSEUDOPROPER", dqanalysisflags::Massee, dqanalysisflags::Ptee, dqanalysisflags::Etaee, dqanalysisflags::Rapee, dqanalysisflags::Phiee, dqanalysisflags::Lxyee, dqanalysisflags::LxyeePoleMass, dqanalysisflags::Lzee, dqanalysisflags::AmbiguousInBunchPairs, dqanalysisflags::AmbiguousOutOfBunchPairs, dqanalysisflags::Corrassoc, dqanalysisflags::MultiplicityFT0A, dqanalysisflags::MultiplicityFT0C, dqanalysisflags::PercentileFT0M, dqanalysisflags::MultiplicityNContrib);
 DECLARE_SOA_TABLE(OniaMCTruth, "AOD", "MCTRUTHONIA", dqanalysisflags::OniaPt, dqanalysisflags::OniaEta, dqanalysisflags::OniaY, dqanalysisflags::OniaPhi, dqanalysisflags::OniaVz, dqanalysisflags::OniaVtxZ, dqanalysisflags::MultiplicityFT0A, dqanalysisflags::MultiplicityFT0C, dqanalysisflags::PercentileFT0M, dqanalysisflags::MultiplicityNContrib);
 DECLARE_SOA_TABLE(MuonTable, "AOD", "DQMUONTABLE",
-                  dqanalysisflags::RunNumber, dqanalysisflags::EventIdx, dqanalysisflags::EventTimestamp, dqanalysisflags::GlobalIndexassoc, 
+                  dqanalysisflags::RunNumber, dqanalysisflags::EventIdx, dqanalysisflags::EventTimestamp, dqanalysisflags::GlobalIndexassoc, dqanalysisflags::GlobalIndexMCtrack, 
                   dqanalysisflags::Ptassoc, dqanalysisflags::Etaassoc, dqanalysisflags::Phiassoc,
                   dqanalysisflags::MotherID, dqanalysisflags::GrandmotherID, dqanalysisflags::MotherPDG, dqanalysisflags::GrandmotherPDG, dqanalysisflags::NMothers,
                   dqanalysisflags::IsPrimary, dqanalysisflags::IsProducedInTransport, dqanalysisflags::IsProducedByGenerator, dqanalysisflags::IsFromBackgroundEvent, dqanalysisflags::IsHEPMCFinalState, dqanalysisflags::IsPowhegDY
@@ -1043,11 +1044,12 @@ struct AnalysisMuonSelection {
       } // end loop over MC signals
 
       // Find grandmothers
-      int motherID = -9999;
-      int grandmotherID = -9999;
-      int motherPdg = -9999;
-      int grandmotherPdg = -9999;
-      int nMothers = 0;
+      uint64_t mcTrackID = -9999;
+      int64_t motherID = -9999;
+      int64_t grandmotherID = -9999;
+      int64_t motherPdg = -9999;
+      int64_t grandmotherPdg = -9999;
+      int64_t nMothers = 0;
       bool isPrimary = false;
       bool isProducedInTransport = false;
       bool isProducedByGenerator = false;
@@ -1057,6 +1059,7 @@ struct AnalysisMuonSelection {
       
       if (track.has_reducedMCTrack()) {
         auto mctrack = track.reducedMCTrack();
+        mcTrackID = mctrack.globalIndex();
 
         // Check if primary or secondary
         isPrimary = mctrack.isPhysicalPrimary();
@@ -1085,7 +1088,7 @@ struct AnalysisMuonSelection {
 
       // Fill muon table
       muonTable(event.runNumber(), event.globalIndex(), event.timestamp(),
-      track.globalIndex(), track.pt(), track.eta(), track.phi(),
+      track.globalIndex(), mcTrackID, track.pt(), track.eta(), track.phi(),
       motherID, grandmotherID, motherPdg, grandmotherPdg, nMothers,
       isPrimary, isProducedInTransport, isProducedByGenerator, isFromBackgroundEvent, isHEPMCFinalState, isPowhegDY);
 
@@ -1152,60 +1155,72 @@ struct AnalysisMuonSelection {
     }
   }
 
-  void runMuonMC(ReducedMCTracks const& muonsMC)
+  void runMuonMC(MyEventsSelected const& events, ReducedMCEvents const& mcEvents, ReducedMCTracks const& mcTracks)
   {
-    for (auto& mctrack : muonsMC) {
+    for (auto& event : events) {
 
-      if (!std::abs(mctrack.pdgCode() ==13)) {
+      if (!event.has_reducedMCevent()) {
         continue;
       }
+      VarManager::FillEvent<gkEventFillMap>(event, VarManager::fgValues);
+      VarManager::FillEvent<VarManager::ObjTypes::ReducedEventMC>(event.reducedMCevent(), VarManager::fgValues);
 
-      auto eventMC = mctrack.reducedMCevent();
-
-      // Find grandmothers
-      int motherID = -9999;
-      int grandmotherID = -9999;
-      int motherPdg = -9999;
-      int grandmotherPdg = -9999;
-      int nMothers = 0;
-      bool isPrimary = false;
-      bool isProducedInTransport = false;
-      bool isProducedByGenerator = false;
-      bool isFromBackgroundEvent = false;
-      bool isHEPMCFinalState = false;
-      bool isPowhegDY = false;
-      
-      // Check if primary or secondary
-      isPrimary = mctrack.isPhysicalPrimary();
-      isProducedInTransport = !mctrack.producedByGenerator();
-      isProducedByGenerator = mctrack.producedByGenerator();
-      isFromBackgroundEvent = mctrack.fromBackgroundEvent();
-      isHEPMCFinalState = mctrack.getHepMCStatusCode() == 11;
-      isPowhegDY = mctrack.getHepMCStatusCode() == 23;
-
-      if (mctrack.has_mothers()) {
-        
-        motherID = mctrack.template mothers_first_as<ReducedMCTracks>().globalIndex();
-        motherPdg = mctrack.template mothers_first_as<ReducedMCTracks>().pdgCode();
-        auto currentMCParticle = mctrack;
-        
-        // Loop to find first mother
-        while (currentMCParticle.has_mothers()) {
-          auto mother = currentMCParticle.template mothers_first_as<ReducedMCTracks>();
-          currentMCParticle = mother;
-          grandmotherID = currentMCParticle.globalIndex();
-          grandmotherPdg = currentMCParticle.pdgCode();
-          nMothers++;
+      for (auto& track : mcTracks) {
+        if (track.reducedMCeventId() != event.reducedMCeventId()) {
+          continue;
         }
+
+        if (!(std::abs(track.pdgCode()) == 13)) {
+          continue;
+        }
+
+        VarManager::FillTrackMC(mcTracks, track);
+        auto track_raw = mcTracks.rawIteratorAt(track.globalIndex());
+
+        // Find grandmothers
+        int64_t motherID = -9999;
+        int64_t grandmotherID = -9999;
+        int64_t motherPdg = -9999;
+        int64_t grandmotherPdg = -9999;
+        int64_t nMothers = 0;
+        bool isPrimary = false;
+        bool isProducedInTransport = false;
+        bool isProducedByGenerator = false;
+        bool isFromBackgroundEvent = false;
+        bool isHEPMCFinalState = false;
+        bool isPowhegDY = false;
+        
+        // Check if primary or secondary
+        isPrimary = track.isPhysicalPrimary();
+        isProducedInTransport = !track.producedByGenerator();
+        isProducedByGenerator = track.producedByGenerator();
+        isFromBackgroundEvent = track.fromBackgroundEvent();
+        isHEPMCFinalState = track.getHepMCStatusCode() == 11;
+        isPowhegDY = track.getHepMCStatusCode() == 23;
+        if (track.has_mothers()) {
+          
+          motherID = track.template mothers_first_as<ReducedMCTracks>().globalIndex();
+          motherPdg = track.template mothers_first_as<ReducedMCTracks>().pdgCode();
+          auto currentMCParticle = track;
+          
+          // Loop to find first mother
+          while (currentMCParticle.has_mothers()) {
+            auto mother = currentMCParticle.template mothers_first_as<ReducedMCTracks>();
+            currentMCParticle = mother;
+            grandmotherID = currentMCParticle.globalIndex();
+            grandmotherPdg = currentMCParticle.pdgCode();
+            nMothers++;
+          }
+        }
+
+        // Fill muon table
+        muonTable(-9999, event.globalIndex(), -9999,
+        track_raw.globalIndex(), track.globalIndex(), track_raw.pt(), track_raw.eta(), track_raw.phi(),
+        motherID, grandmotherID, motherPdg, grandmotherPdg, nMothers,
+        isPrimary, isProducedInTransport, isProducedByGenerator, isFromBackgroundEvent, isHEPMCFinalState, isPowhegDY);
+
       }
-
-      // Fill muon table
-      muonTable(-9999, eventMC.globalIndex(), -9999,
-      mctrack.globalIndex(), mctrack.pt(), mctrack.eta(), mctrack.phi(),
-      motherID, grandmotherID, motherPdg, grandmotherPdg, nMothers,
-      isPrimary, isProducedInTransport, isProducedByGenerator, isFromBackgroundEvent, isHEPMCFinalState, isPowhegDY);
-
-    } // end loop over muons
+    }
   }
 
   void processSkimmed(ReducedMuonsAssoc const& assocs, MyEventsSelected const& events, MyMuonTracks const& muons, ReducedMCEvents const& eventsMC, ReducedMCTracks const& tracksMC)
@@ -1216,9 +1231,11 @@ struct AnalysisMuonSelection {
   {
     runMuonSelection<gkEventFillMapWithCov, gkMuonFillMapWithCov>(assocs, events, muons, eventsMC, tracksMC);
   }
-  void processMC(ReducedMuonsAssoc const& /*assocs*/, MyEventsSelected const& /*events*/, MyMuonTracks const& /*muons*/, ReducedMCEvents const& /*eventsMC*/, ReducedMCTracks const& tracksMC)
+  // void processMC(ReducedMuonsAssoc const& /*assocs*/, MyEventsSelected const& /*events*/, MyMuonTracks const& /*muons*/, ReducedMCEvents const& /*eventsMC*/, ReducedMCTracks const& tracksMC)
+  void processMC(ReducedMuonsAssoc const& /*assocs*/, MyEventsSelected const& events, MyMuonTracks const& /*muons*/, ReducedMCEvents const& eventsMC, ReducedMCTracks const& tracksMC)
   {
-    runMuonMC(tracksMC);
+    // runMuonMC(tracksMC);
+    runMuonMC(events, eventsMC, tracksMC);
   }
   void processDummy(MyEvents&)
   {
