@@ -173,6 +173,7 @@ DECLARE_SOA_COLUMN(IsProducedByGenerator, isProducedByGenerator, bool);
 DECLARE_SOA_COLUMN(IsFromBackgroundEvent, isFromBackgroundEvent, bool);
 DECLARE_SOA_COLUMN(IsHEPMCFinalState, isHEPMCFinalState, bool);
 DECLARE_SOA_COLUMN(IsPowhegDY, isPowhegDY, bool);
+DECLARE_SOA_COLUMN(MuonTrackType, muonTrackType, int8_t);
 } // namespace dqanalysisflags
 
 DECLARE_SOA_TABLE(EventCuts, "AOD", "DQANAEVCUTS", dqanalysisflags::IsEventSelected);                                                            //!  joinable to ReducedEvents
@@ -209,7 +210,8 @@ DECLARE_SOA_TABLE(MuonTable, "AOD", "DQMUONTABLE",
                   dqanalysisflags::RunNumber, dqanalysisflags::EventIdx, dqanalysisflags::EventTimestamp, dqanalysisflags::GlobalIndexassoc, dqanalysisflags::GlobalIndexMCtrack, 
                   dqanalysisflags::Ptassoc, dqanalysisflags::Etaassoc, dqanalysisflags::Phiassoc,
                   dqanalysisflags::MotherID, dqanalysisflags::GrandmotherID, dqanalysisflags::MotherPDG, dqanalysisflags::GrandmotherPDG, dqanalysisflags::NMothers,
-                  dqanalysisflags::IsPrimary, dqanalysisflags::IsProducedInTransport, dqanalysisflags::IsProducedByGenerator, dqanalysisflags::IsFromBackgroundEvent, dqanalysisflags::IsHEPMCFinalState, dqanalysisflags::IsPowhegDY
+                  dqanalysisflags::IsPrimary, dqanalysisflags::IsProducedInTransport, dqanalysisflags::IsProducedByGenerator, dqanalysisflags::IsFromBackgroundEvent, dqanalysisflags::IsHEPMCFinalState, dqanalysisflags::IsPowhegDY,
+                  dqanalysisflags::MuonTrackType
                   );
 } // namespace o2::aod
 
@@ -1090,7 +1092,8 @@ struct AnalysisMuonSelection {
       muonTable(event.runNumber(), event.globalIndex(), event.timestamp(),
       track.globalIndex(), mcTrackID, track.pt(), track.eta(), track.phi(),
       motherID, grandmotherID, motherPdg, grandmotherPdg, nMothers,
-      isPrimary, isProducedInTransport, isProducedByGenerator, isFromBackgroundEvent, isHEPMCFinalState, isPowhegDY);
+      isPrimary, isProducedInTransport, isProducedByGenerator, isFromBackgroundEvent, isHEPMCFinalState, isPowhegDY,
+      VarManager::fgValues[VarManager::kMuonTrackType]);
 
       // count the number of associations per track
       if (fConfigPublishAmbiguity && filterMap > 0) {
@@ -1217,7 +1220,8 @@ struct AnalysisMuonSelection {
         muonTable(-9999, event.globalIndex(), -9999,
         track_raw.globalIndex(), track.globalIndex(), track_raw.pt(), track_raw.eta(), track_raw.phi(),
         motherID, grandmotherID, motherPdg, grandmotherPdg, nMothers,
-        isPrimary, isProducedInTransport, isProducedByGenerator, isFromBackgroundEvent, isHEPMCFinalState, isPowhegDY);
+        isPrimary, isProducedInTransport, isProducedByGenerator, isFromBackgroundEvent, isHEPMCFinalState, isPowhegDY,
+        VarManager::fgValues[VarManager::kMuonTrackType]);
 
       }
     }
