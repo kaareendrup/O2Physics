@@ -174,6 +174,7 @@ DECLARE_SOA_COLUMN(IsFromBackgroundEvent, isFromBackgroundEvent, bool);
 DECLARE_SOA_COLUMN(IsHEPMCFinalState, isHEPMCFinalState, bool);
 DECLARE_SOA_COLUMN(IsPowhegDY, isPowhegDY, bool);
 DECLARE_SOA_COLUMN(MuonTrackType, muonTrackType, int8_t);
+DECLARE_SOA_COLUMN(TrackPDG, trackPDG, int64_t);
 } // namespace dqanalysisflags
 
 DECLARE_SOA_TABLE(EventCuts, "AOD", "DQANAEVCUTS", dqanalysisflags::IsEventSelected);                                                            //!  joinable to ReducedEvents
@@ -211,8 +212,13 @@ DECLARE_SOA_TABLE(MuonTable, "AOD", "DQMUONTABLE",
                   dqanalysisflags::Ptassoc, dqanalysisflags::Etaassoc, dqanalysisflags::Phiassoc,
                   dqanalysisflags::MotherID, dqanalysisflags::GrandmotherID, dqanalysisflags::MotherPDG, dqanalysisflags::GrandmotherPDG, dqanalysisflags::NMothers,
                   dqanalysisflags::IsPrimary, dqanalysisflags::IsProducedInTransport, dqanalysisflags::IsProducedByGenerator, dqanalysisflags::IsFromBackgroundEvent, dqanalysisflags::IsHEPMCFinalState, dqanalysisflags::IsPowhegDY,
-                  dqanalysisflags::MuonTrackType
-                  );
+                  dqanalysisflags::MuonTrackType);
+DECLARE_SOA_TABLE(JPsiTable, "AOD", "DQJPSITABLE",
+                  dqanalysisflags::RunNumber, dqanalysisflags::EventIdx, dqanalysisflags::EventTimestamp, dqanalysisflags::GlobalIndexassoc, dqanalysisflags::GlobalIndexMCtrack, 
+                  dqanalysisflags::Ptassoc, dqanalysisflags::Etaassoc, dqanalysisflags::Phiassoc,
+                  dqanalysisflags::MotherID, dqanalysisflags::GrandmotherID, dqanalysisflags::MotherPDG, dqanalysisflags::GrandmotherPDG, dqanalysisflags::NMothers,
+                  dqanalysisflags::IsPrimary, dqanalysisflags::IsProducedInTransport, dqanalysisflags::IsProducedByGenerator, dqanalysisflags::IsFromBackgroundEvent, dqanalysisflags::IsHEPMCFinalState, dqanalysisflags::IsPowhegDY,
+                  dqanalysisflags::TrackPDG);
 } // namespace o2::aod
 
 // Declarations of various short names
@@ -828,6 +834,7 @@ struct AnalysisMuonSelection {
   Produces<aod::MuonTrackCuts> muonSel;
   Produces<aod::MuonAmbiguities> muonAmbiguities;
   Produces<aod::MuonTable> muonTable;
+  Produces<aod::JPsiTable> jpsiTable;
   OutputObj<THashList> fOutputList{"output"};
 
   Configurable<std::string> fConfigCuts{"cfgMuonCuts", "muonQualityCuts", "Comma separated list of muon cuts"};
@@ -1173,7 +1180,10 @@ struct AnalysisMuonSelection {
           continue;
         }
 
-        if (!(std::abs(track.pdgCode()) == 13)) {
+        // if (!(std::abs(track.pdgCode()) == 13)) {
+        //   continue;
+        // }
+        if (!((std::abs(track.pdgCode()) == 13) || (std::abs(track.pdgCode()) == 443) || (std::abs(track.pdgCode()) == 100443))) {
           continue;
         }
 
@@ -1216,12 +1226,21 @@ struct AnalysisMuonSelection {
           }
         }
 
-        // Fill muon table
-        muonTable(-9999, event.globalIndex(), -9999,
-        track_raw.globalIndex(), track.globalIndex(), track_raw.pt(), track_raw.eta(), track_raw.phi(),
-        motherID, grandmotherID, motherPdg, grandmotherPdg, nMothers,
-        isPrimary, isProducedInTransport, isProducedByGenerator, isFromBackgroundEvent, isHEPMCFinalState, isPowhegDY,
-        VarManager::fgValues[VarManager::kMuonTrackType]);
+        // Fill tables
+        if (std::abs(track.pdgCode()) == 13) {
+          muonTable(-9999, event.globalIndex(), -9999,
+          track_raw.globalIndex(), track.globalIndex(), track_raw.pt(), track_raw.eta(), track_raw.phi(),
+          motherID, grandmotherID, motherPdg, grandmotherPdg, nMothers,
+          isPrimary, isProducedInTransport, isProducedByGenerator, isFromBackgroundEvent, isHEPMCFinalState, isPowhegDY,
+          VarManager::fgValues[VarManager::kMuonTrackType]);
+        }
+        if ((std::abs(track.pdgCode()) == 443) || (std::abs(track.pdgCode()) == 100443)) {
+          jpsiTable(-9999, event.globalIndex(), -9999,
+          track_raw.globalIndex(), track.globalIndex(), track_raw.pt(), track_raw.eta(), track_raw.phi(),
+          motherID, grandmotherID, motherPdg, grandmotherPdg, nMothers,
+          isPrimary, isProducedInTransport, isProducedByGenerator, isFromBackgroundEvent, isHEPMCFinalState, isPowhegDY,
+          track.pdgCode());
+        }
 
       }
     }
