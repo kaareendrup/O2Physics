@@ -212,7 +212,7 @@ DECLARE_SOA_TABLE(MuonTable, "AOD", "DQMUONTABLE",
                   dqanalysisflags::Ptassoc, dqanalysisflags::Etaassoc, dqanalysisflags::Phiassoc,
                   dqanalysisflags::MotherID, dqanalysisflags::GrandmotherID, dqanalysisflags::MotherPDG, dqanalysisflags::GrandmotherPDG, dqanalysisflags::NMothers,
                   dqanalysisflags::IsPrimary, dqanalysisflags::IsProducedInTransport, dqanalysisflags::IsProducedByGenerator, dqanalysisflags::IsFromBackgroundEvent, dqanalysisflags::IsHEPMCFinalState, dqanalysisflags::IsPowhegDY,
-                  dqanalysisflags::MuonTrackType);
+                  dqanalysisflags::MuonTrackType, dqanalysisflags::TrackPDG);
 DECLARE_SOA_TABLE(JPsiTable, "AOD", "DQJPSITABLE",
                   dqanalysisflags::RunNumber, dqanalysisflags::EventIdx, dqanalysisflags::EventTimestamp, dqanalysisflags::GlobalIndexassoc, dqanalysisflags::GlobalIndexMCtrack, 
                   dqanalysisflags::Ptassoc, dqanalysisflags::Etaassoc, dqanalysisflags::Phiassoc,
@@ -1053,6 +1053,7 @@ struct AnalysisMuonSelection {
       } // end loop over MC signals
 
       // Find grandmothers
+      int8_t trackPdg = -9999;
       uint64_t mcTrackID = -9999;
       int64_t motherID = -9999;
       int64_t grandmotherID = -9999;
@@ -1069,6 +1070,7 @@ struct AnalysisMuonSelection {
       if (track.has_reducedMCTrack()) {
         auto mctrack = track.reducedMCTrack();
         mcTrackID = mctrack.globalIndex();
+        trackPdg = mctrack.pdgCode();
 
         // Check if primary or secondary
         isPrimary = mctrack.isPhysicalPrimary();
@@ -1100,7 +1102,7 @@ struct AnalysisMuonSelection {
       track.globalIndex(), mcTrackID, track.pt(), track.eta(), track.phi(),
       motherID, grandmotherID, motherPdg, grandmotherPdg, nMothers,
       isPrimary, isProducedInTransport, isProducedByGenerator, isFromBackgroundEvent, isHEPMCFinalState, isPowhegDY,
-      VarManager::fgValues[VarManager::kMuonTrackType]);
+      VarManager::fgValues[VarManager::kMuonTrackType], trackPdg);
 
       // count the number of associations per track
       if (fConfigPublishAmbiguity && filterMap > 0) {
@@ -1232,7 +1234,7 @@ struct AnalysisMuonSelection {
           track_raw.globalIndex(), track.globalIndex(), track_raw.pt(), track_raw.eta(), track_raw.phi(),
           motherID, grandmotherID, motherPdg, grandmotherPdg, nMothers,
           isPrimary, isProducedInTransport, isProducedByGenerator, isFromBackgroundEvent, isHEPMCFinalState, isPowhegDY,
-          VarManager::fgValues[VarManager::kMuonTrackType]);
+          VarManager::fgValues[VarManager::kMuonTrackType], track.pdgCode());
         }
         if ((std::abs(track.pdgCode()) == 443) || (std::abs(track.pdgCode()) == 100443)) {
           jpsiTable(-9999, event.globalIndex(), -9999,
