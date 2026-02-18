@@ -110,6 +110,7 @@ DECLARE_SOA_COLUMN(Ptassoc, ptassoc, float);
 DECLARE_SOA_COLUMN(PINassoc, pINassoc, float);
 DECLARE_SOA_COLUMN(Etaassoc, etaassoc, float);
 DECLARE_SOA_COLUMN(Phiassoc, phiassoc, float);
+DECLARE_SOA_COLUMN(Signassoc, signassoc, int8_t);
 DECLARE_SOA_COLUMN(Ptpair, ptpair, float);
 DECLARE_SOA_COLUMN(Etapair, etapair, float);
 DECLARE_SOA_COLUMN(Ptleg1, ptleg1, float);
@@ -190,7 +191,7 @@ DECLARE_SOA_TABLE(JPsiMuonCandidates, "AOD", "DQJPSIMUONA",
 DECLARE_SOA_TABLE(JPsieeCandidates, "AOD", "DQPSEUDOPROPER", dqanalysisflags::Massee, dqanalysisflags::Ptee, dqanalysisflags::Lxyee, dqanalysisflags::LxyeePoleMass, dqanalysisflags::Lzee, dqanalysisflags::AmbiguousInBunchPairs, dqanalysisflags::AmbiguousOutOfBunchPairs, dqanalysisflags::MultiplicityFT0A, dqanalysisflags::MultiplicityFT0C, dqanalysisflags::PercentileFT0M, dqanalysisflags::MultiplicityNContrib);
 DECLARE_SOA_TABLE(MuonTable, "AOD", "DQMUONTABLE",
                   dqanalysisflags::RunNumber, dqanalysisflags::EventIdx, dqanalysisflags::EventTimestamp, dqanalysisflags::GlobalIndexassoc, 
-                  dqanalysisflags::Ptassoc, dqanalysisflags::Etaassoc, dqanalysisflags::Phiassoc
+                  dqanalysisflags::Ptassoc, dqanalysisflags::Etaassoc, dqanalysisflags::Phiassoc, dqanalysisflags::Signassoc
                   );
 } // namespace o2::aod
 
@@ -954,7 +955,7 @@ struct AnalysisMuonSelection {
 
       if (filterMap > 0) {
         muonTable(event.runNumber(), event.globalIndex(), event.timestamp(),
-        track.globalIndex(), track.pt(), track.eta(), track.phi());
+        track.globalIndex(), track.pt(), track.eta(), track.phi(), track.sign());
       }
 
       // count the number of associations per track
