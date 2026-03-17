@@ -72,6 +72,24 @@ using namespace o2::framework::expressions;
 using namespace o2::aod;
 using namespace o2::aod::rctsel;
 
+namespace o2::aod
+{
+namespace dqanalysisflags
+{
+DECLARE_SOA_COLUMN(MotherID, motherID, int64_t);
+DECLARE_SOA_COLUMN(GrandmotherID, grandmotherID, int64_t);
+DECLARE_SOA_COLUMN(MotherPDG, motherPDG, int64_t);
+DECLARE_SOA_COLUMN(PenultimotherPDG, penultimotherPDG, int64_t);
+DECLARE_SOA_COLUMN(GrandmotherPDG, grandmotherPDG, int64_t);
+DECLARE_SOA_COLUMN(NMothers, nMothers, int64_t);
+}
+DECLARE_SOA_TABLE(MuonTable, "AOD", "DQMUONTABLE",
+                  dqanalysisflags::MotherID, dqanalysisflags::GrandmotherID, 
+                  dqanalysisflags::MotherPDG, dqanalysisflags::PenultimotherPDG, dqanalysisflags::GrandmotherPDG, 
+                  dqanalysisflags::NMothers
+                  );
+}
+
 // Declare Joins used in the various process functions
 using MyBarrelTracks = soa::Join<aod::Tracks, aod::TracksExtra, aod::TracksDCA, aod::TrackSelection,
                                  aod::pidTPCFullEl, aod::pidTPCFullMu, aod::pidTPCFullPi,
@@ -162,6 +180,7 @@ struct TableMakerMC {
   Produces<ReducedMFTsExtra> mftTrackExtra;
   Produces<ReducedMFTAssoc> mftAssoc;
   Produces<ReducedMFTLabels> mftLabels;
+  Produces<aod::MuonTable> muonTable;
 
   OutputObj<THashList> fOutputList{"output"};
   OutputObj<TList> fStatsList{"Statistics"}; //! skimming statistics
@@ -1088,6 +1107,50 @@ struct TableMakerMC {
             }
             i++;
           } // end loop over MC signals
+
+          // Find grandmothers
+          int motherID = -9999;
+          int grandmotherID = -9999;
+          int motherPdg = -9999;
+          int grandmotherPdg = -9999;
+          int nMothers = 0;
+
+          std::vector<int> motherPDGs;
+
+          if (mctrack.has_mothers()) {
+
+            motherID = mctrack.template mothers_first_as<aod::McParticles>().globalIndex();
+            motherPdg = mctrack.template mothers_first_as<aod::McParticles>().pdgCode();
+            auto currentMCParticle = mctrack;
+
+            // Loop to find first mother
+            while (currentMCParticle.has_mothers()) {
+              auto mother = currentMCParticle.template mothers_first_as<aod::McParticles>();
+              currentMCParticle = mother;
+              grandmotherID = currentMCParticle.globalIndex();
+              grandmotherPdg = currentMCParticle.pdgCode();
+              motherPDGs.push_back(grandmotherPdg);
+              nMothers++;
+            }
+          }
+
+          std::string motherstring = "";
+          for (auto pdg : motherPDGs) {
+            motherstring += std::to_string(pdg) + " ";
+          }
+
+          int penultimotherPdg = motherPdg;
+          if (motherPDGs.size() >= 2) {
+            penultimotherPdg = motherPDGs[motherPDGs.size() - 2];
+          }
+
+          LOG(info) << "Muon MC truth: muonID=" << mctrack.globalIndex() << " pdg=" << mctrack.pdgCode()
+                    << " motherID=" << motherID << " motherPdg=" << motherPdg
+                    << " grandmotherID=" << grandmotherID << " grandmotherPdg=" << grandmotherPdg
+                    << " nMothers=" << nMothers << " motherPDGs=" << motherstring;
+
+          // Fill muon table
+          muonTable(motherID, grandmotherID, motherPdg, penultimotherPdg, grandmotherPdg, nMothers);
 
           // if the MC truth particle corresponding to this reconstructed muon is not already written,
           //   add it to the skimmed stack

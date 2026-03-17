@@ -112,6 +112,7 @@ DECLARE_SOA_COLUMN(Ptassoc, ptassoc, float);
 DECLARE_SOA_COLUMN(PINassoc, pINassoc, float);
 DECLARE_SOA_COLUMN(Etaassoc, etaassoc, float);
 DECLARE_SOA_COLUMN(Phiassoc, phiassoc, float);
+DECLARE_SOA_COLUMN(Signassoc, signassoc, int8_t);
 DECLARE_SOA_COLUMN(Ptpair, ptpair, float);
 DECLARE_SOA_COLUMN(Etapair, etapair, float);
 DECLARE_SOA_COLUMN(Ptleg1, ptleg1, float);
@@ -191,6 +192,10 @@ DECLARE_SOA_TABLE(JPsiMuonCandidates, "AOD", "DQJPSIMUONA",
                   dqanalysisflags::MassDileptonCandidate, dqanalysisflags::Ptpair, dqanalysisflags::Etapair, dqanalysisflags::Ptassoc, dqanalysisflags::Etaassoc, dqanalysisflags::Phiassoc,
                   dqanalysisflags::Ptleg1, dqanalysisflags::Etaleg1, dqanalysisflags::Phileg1, dqanalysisflags::Ptleg2, dqanalysisflags::Etaleg2, dqanalysisflags::Phileg2);
 DECLARE_SOA_TABLE(JPsieeCandidates, "AOD", "DQPSEUDOPROPER", dqanalysisflags::Massee, dqanalysisflags::Ptee, dqanalysisflags::Lxyee, dqanalysisflags::LxyeePoleMass, dqanalysisflags::Lzee, dqanalysisflags::LRecalxyeePoleMass, dqanalysisflags::AmbiguousInBunchPairs, dqanalysisflags::AmbiguousOutOfBunchPairs, dqanalysisflags::MultiplicityFT0A, dqanalysisflags::MultiplicityFT0C, dqanalysisflags::PercentileFT0M, dqanalysisflags::MultiplicityNContrib);
+DECLARE_SOA_TABLE(MuonTable, "AOD", "DQMUONTABLE",
+                  dqanalysisflags::RunNumber, dqanalysisflags::EventIdx, dqanalysisflags::EventTimestamp, dqanalysisflags::GlobalIndexassoc, 
+                  dqanalysisflags::Ptassoc, dqanalysisflags::Etaassoc, dqanalysisflags::Phiassoc, dqanalysisflags::Signassoc
+                  );
 } // namespace o2::aod
 
 // Declarations of various short names
@@ -830,6 +835,7 @@ struct AnalysisTrackSelection {
 struct AnalysisMuonSelection {
   Produces<aod::MuonTrackCuts> muonSel;
   Produces<aod::MuonAmbiguities> muonAmbiguities;
+  Produces<aod::MuonTable> muonTable;
   OutputObj<THashList> fOutputList{"output"};
 
   Configurable<std::string> fConfigCuts{"cfgMuonCuts", "muonQualityCuts", "Comma separated list of muon cuts"};
@@ -957,6 +963,11 @@ struct AnalysisMuonSelection {
         }
       } // end loop over cuts
       muonSel(filterMap);
+
+      if (filterMap > 0) {
+        muonTable(event.runNumber(), event.globalIndex(), event.timestamp(),
+        track.globalIndex(), track.pt(), track.eta(), track.phi(), track.sign());
+      }
 
       // count the number of associations per track
       if (fConfigPublishAmbiguity && filterMap > 0) {
