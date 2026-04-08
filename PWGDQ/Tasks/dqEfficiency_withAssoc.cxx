@@ -111,6 +111,9 @@ DECLARE_SOA_COLUMN(GlobalIndexassoc, globalIndexassoc, int64_t);
 DECLARE_SOA_COLUMN(GlobalIndexMCtrack, globalIndexMCtrack, int64_t);
 DECLARE_SOA_COLUMN(GlobalIndexleg1, globalIndexleg1, int64_t);
 DECLARE_SOA_COLUMN(GlobalIndexleg2, globalIndexleg2, int64_t);
+DECLARE_SOA_COLUMN(Ptmother, ptmother, float);
+DECLARE_SOA_COLUMN(Etamother, etamother, float);
+DECLARE_SOA_COLUMN(Phimother, phimother, float);
 DECLARE_SOA_COLUMN(Ptassoc, ptassoc, float);
 DECLARE_SOA_COLUMN(PINassoc, pINassoc, float);
 DECLARE_SOA_COLUMN(Etaassoc, etaassoc, float);
@@ -232,6 +235,7 @@ DECLARE_SOA_TABLE(MuonTable, "AOD", "DQMUONTABLE",
                   dqanalysisflags::Ptassoc, dqanalysisflags::Etaassoc, dqanalysisflags::Phiassoc,
                   dqanalysisflags::Ptassoctrue, dqanalysisflags::Etaassoctrue, dqanalysisflags::Phiassoctrue,
                   dqanalysisflags::MotherID, dqanalysisflags::GrandmotherID, dqanalysisflags::MotherPDG, dqanalysisflags::GrandmotherPDG, dqanalysisflags::NMothers,
+                  dqanalysisflags::Ptmother, dqanalysisflags::Etamother, dqanalysisflags::Phimother,
                   dqanalysisflags::IsPrimary, dqanalysisflags::IsProducedInTransport, dqanalysisflags::IsProducedByGenerator, dqanalysisflags::IsFromBackgroundEvent, dqanalysisflags::IsHEPMCFinalState, dqanalysisflags::IsPowhegDY,
                   dqanalysisflags::MuonTrackType, dqanalysisflags::TrackPDG);
 DECLARE_SOA_TABLE(JPsiTable, "AOD", "DQJPSITABLE",
@@ -1078,6 +1082,9 @@ struct AnalysisMuonSelection {
       float ptTrue = -9999.f;
       float etaTrue = -9999.f;
       float phiTrue = -9999.f;
+      float ptMother= -9999.f;
+      float etaMother = -9999.f;
+      float phiMother = -9999.f;
       int64_t mcEventID = -9999;
       int64_t trackPdg = -9999;
       int64_t mcTrackID = -9999;
@@ -1116,6 +1123,9 @@ struct AnalysisMuonSelection {
 
           motherID = mctrack.template mothers_first_as<ReducedMCTracks>().globalIndex();
           motherPdg = mctrack.template mothers_first_as<ReducedMCTracks>().pdgCode();
+          ptMother = mctrack.template mothers_first_as<ReducedMCTracks>().pt();
+          etaMother = mctrack.template mothers_first_as<ReducedMCTracks>().eta();
+          phiMother = mctrack.template mothers_first_as<ReducedMCTracks>().phi();
           auto currentMCParticle = mctrack;
 
           // Loop to find first mother
@@ -1133,6 +1143,7 @@ struct AnalysisMuonSelection {
       muonTable(event.runNumber(), event.globalIndex(), mcEventID, event.timestamp(),
       track.globalIndex(), mcTrackID, track.pt(), track.eta(), track.phi(), ptTrue, etaTrue, phiTrue,
       motherID, grandmotherID, motherPdg, grandmotherPdg, nMothers,
+      ptMother, etaMother, phiMother,
       isPrimary, isProducedInTransport, isProducedByGenerator, isFromBackgroundEvent, isHEPMCFinalState, isPowhegDY,
       VarManager::fgValues[VarManager::kMuonTrackType], trackPdg);
 
@@ -1225,6 +1236,9 @@ struct AnalysisMuonSelection {
       int64_t motherPdg = -9999;
       int64_t grandmotherPdg = -9999;
       int64_t nMothers = 0;
+      float ptMother= -9999.f;
+      float etaMother = -9999.f;
+      float phiMother = -9999.f;
       bool isPrimary = false;
       bool isProducedInTransport = false;
       bool isProducedByGenerator = false;
@@ -1243,6 +1257,9 @@ struct AnalysisMuonSelection {
 
         motherID = track.template mothers_first_as<ReducedMCTracks>().globalIndex();
         motherPdg = track.template mothers_first_as<ReducedMCTracks>().pdgCode();
+        ptMother = track.template mothers_first_as<ReducedMCTracks>().pt();
+        etaMother = track.template mothers_first_as<ReducedMCTracks>().eta();
+        phiMother = track.template mothers_first_as<ReducedMCTracks>().phi();
         auto currentMCParticle = track;
 
         // Loop to find first mother
@@ -1260,6 +1277,7 @@ struct AnalysisMuonSelection {
         muonTable(-9999, event.globalIndex(), -9999, -9999, 
         track_raw.globalIndex(), track.globalIndex(), track_raw.pt(), track_raw.eta(), track_raw.phi(), track.pt(), track.eta(), track.phi(),
         motherID, grandmotherID, motherPdg, grandmotherPdg, nMothers,
+        ptMother, etaMother, phiMother, 
         isPrimary, isProducedInTransport, isProducedByGenerator, isFromBackgroundEvent, isHEPMCFinalState, isPowhegDY,
         VarManager::fgValues[VarManager::kMuonTrackType], track.pdgCode());
       }
