@@ -196,6 +196,8 @@ DECLARE_SOA_COLUMN(IsHEPMCFinalState, isHEPMCFinalState, bool);
 DECLARE_SOA_COLUMN(IsPowhegDY, isPowhegDY, bool);
 DECLARE_SOA_COLUMN(MuonTrackType, muonTrackType, int8_t);
 DECLARE_SOA_COLUMN(TrackPDG, trackPDG, int64_t);
+DECLARE_SOA_COLUMN(DaughterPDGSum, daughterPDGSum, int64_t);
+DECLARE_SOA_COLUMN(NDaughters, nDaughters, int64_t);
 } // namespace dqanalysisflags
 
 DECLARE_SOA_TABLE(EventCuts, "AOD", "DQANAEVCUTS", dqanalysisflags::IsEventSelected);                                                            //!  joinable to ReducedEvents
@@ -244,7 +246,7 @@ DECLARE_SOA_TABLE(JPsiTable, "AOD", "DQJPSITABLE",
                   dqanalysisflags::Ptassoc, dqanalysisflags::Etaassoc, dqanalysisflags::Phiassoc,
                   dqanalysisflags::MotherID, dqanalysisflags::GrandmotherID, dqanalysisflags::MotherPDG, dqanalysisflags::GrandmotherPDG, dqanalysisflags::NMothers,
                   dqanalysisflags::IsPrimary, dqanalysisflags::IsProducedInTransport, dqanalysisflags::IsProducedByGenerator, dqanalysisflags::IsFromBackgroundEvent, dqanalysisflags::IsHEPMCFinalState, dqanalysisflags::IsPowhegDY,
-                  dqanalysisflags::TrackPDG);
+                  dqanalysisflags::TrackPDG, dqanalysisflags::DaughterPDGSum, dqanalysisflags::NDaughters);
 } // namespace o2::aod
 
 // Declarations of various short names
@@ -1239,6 +1241,8 @@ struct AnalysisMuonSelection {
       float ptMother= -9999.f;
       float etaMother = -9999.f;
       float phiMother = -9999.f;
+      int64_t daughterPDGSum = 0;
+      int64_t nDaughters = 0;
       bool isPrimary = false;
       bool isProducedInTransport = false;
       bool isProducedByGenerator = false;
@@ -1272,6 +1276,18 @@ struct AnalysisMuonSelection {
         }
       }
 
+      if ((std::abs(track.pdgCode()) == 443) || (std::abs(track.pdgCode()) == 100443)) {
+        if (track.has_daughters()) {
+          for (int d = track.daughtersIds()[0]; d <= track.daughtersIds()[1]; ++d) {
+            if (d < mcTracks.size()) { // protect against bad daughter indices
+              auto aDaughter = mcTracks.rawIteratorAt(d);
+              daughterPDGSum += abs(aDaughter.pdgCode());
+              nDaughters++;
+            }
+          }
+        }
+      }
+
       // Fill tables
       if (std::abs(track.pdgCode()) == 13) {
         muonTable(-9999, event.globalIndex(), -9999, -9999, 
@@ -1286,7 +1302,7 @@ struct AnalysisMuonSelection {
         track_raw.globalIndex(), track.globalIndex(), track_raw.pt(), track_raw.eta(), track_raw.phi(), track.pt(), track.eta(), track.phi(),
         motherID, grandmotherID, motherPdg, grandmotherPdg, nMothers,
         isPrimary, isProducedInTransport, isProducedByGenerator, isFromBackgroundEvent, isHEPMCFinalState, isPowhegDY,
-        track.pdgCode());
+        track.pdgCode(), daughterPDGSum, nDaughters);
       }
     }
   }
