@@ -84,6 +84,15 @@ DECLARE_SOA_COLUMN(TauxyBcandidate, tauxyBcandidate, float);
 DECLARE_SOA_COLUMN(TauzBcandidate, tauzBcandidate, float);
 DECLARE_SOA_COLUMN(CosPBcandidate, cosPBcandidate, float);
 DECLARE_SOA_COLUMN(Chi2Bcandidate, chi2Bcandidate, float);
+
+DECLARE_SOA_COLUMN(RunNumber, runNumber, uint64_t);
+DECLARE_SOA_COLUMN(EventIdx, eventIdx, uint64_t);
+DECLARE_SOA_COLUMN(EventTimestamp, eventTimestamp, uint64_t);
+DECLARE_SOA_COLUMN(GlobalIndexassoc, globalIndexassoc, int64_t);
+DECLARE_SOA_COLUMN(Ptassoc, ptassoc, float);
+DECLARE_SOA_COLUMN(Etaassoc, etaassoc, float);
+DECLARE_SOA_COLUMN(Phiassoc, phiassoc, float);
+DECLARE_SOA_COLUMN(Signassoc, signassoc, int8_t);
 } // namespace dqanalysisflags
 
 DECLARE_SOA_TABLE(EventCuts, "AOD", "DQANAEVCUTS", dqanalysisflags::IsEventSelected);
@@ -92,6 +101,10 @@ DECLARE_SOA_TABLE(BarrelTrackCuts, "AOD", "DQANATRKCUTS", dqanalysisflags::IsBar
 DECLARE_SOA_TABLE(MuonTrackCuts, "AOD", "DQANAMUONCUTS", dqanalysisflags::IsMuonSelected);
 DECLARE_SOA_TABLE(Prefilter, "AOD", "DQPREFILTER", dqanalysisflags::IsPrefilterVetoed);
 DECLARE_SOA_TABLE(BmesonCandidates, "AOD", "DQBMESONS", dqanalysisflags::massBcandidate, dqanalysisflags::pTBcandidate, dqanalysisflags::LxyBcandidate, dqanalysisflags::LxyzBcandidate, dqanalysisflags::LzBcandidate, dqanalysisflags::TauxyBcandidate, dqanalysisflags::TauzBcandidate, dqanalysisflags::CosPBcandidate, dqanalysisflags::Chi2Bcandidate);
+DECLARE_SOA_TABLE(MuonTable, "AOD", "DQMUONTABLE",
+                  dqanalysisflags::RunNumber, dqanalysisflags::EventIdx, dqanalysisflags::EventTimestamp, dqanalysisflags::GlobalIndexassoc, 
+                  dqanalysisflags::Ptassoc, dqanalysisflags::Etaassoc, dqanalysisflags::Phiassoc, dqanalysisflags::Signassoc
+                  );
 } // namespace o2::aod
 
 // Declarations of various short names
@@ -457,6 +470,7 @@ struct AnalysisTrackSelection {
 
 struct AnalysisMuonSelection {
   Produces<aod::MuonTrackCuts> muonSel;
+  Produces<aod::MuonTable> muonTable;
   OutputObj<THashList> fOutputList{"output"};
   Configurable<std::string> fConfigCuts{"cfgMuonCuts", "muonQualityCuts", "Comma separated list of muon cuts"};
   Configurable<bool> fConfigQA{"cfgQA", false, "If true, fill QA histograms"};
@@ -547,6 +561,11 @@ struct AnalysisMuonSelection {
         }
       }
       muonSel(static_cast<int>(filterMap));
+
+      if (static_cast<int>(filterMap) > 0) {
+        muonTable(event.runNumber(), event.globalIndex(), event.timestamp(),
+        muon.globalIndex(), muon.pt(), muon.eta(), muon.phi(), muon.sign());
+      }
     } // end loop over tracks
   }
 
